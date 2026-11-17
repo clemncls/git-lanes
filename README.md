@@ -15,7 +15,7 @@ Le paquet s’installe directement depuis GitHub ; aucune publication npm n’es
 nécessaire.
 
 ```bash
-pnpm add -D @clemncls/git-lanes@github:clemncls/git-lanes#v0.1.0
+pnpm add -D @clemncls/git-lanes@github:clemncls/git-lanes#v0.1.1
 pnpm exec git-lanes
 ```
 
@@ -58,7 +58,7 @@ placé après `git:graph` sélectionne explicitement la vue simplifiée.
 | --- | --- |
 | `-s`, `--simplified` | Vue simplifiée, sélectionnée par défaut |
 | `-d`, `--detailed` | Ajouter hashes, messages et tags |
-| `-n`, `--max-count` | Limite de nœuds, 30 par défaut ; limite de commits en mode détaillé |
+| `-n`, `--max-count` | Limite de nœuds, 30 par défaut, maximum 10 000 ; limite de commits en mode détaillé |
 | `--color` | `auto`, `always` ou `never` |
 | `-h`, `--help` | Afficher l’aide |
 
@@ -86,12 +86,25 @@ avec `NO_COLOR`, sauf demande explicite `--color always`.
 ## Développement
 
 ```bash
-node --test test/git-lanes.test.mjs
+npm test
+npm run verify:package
 ```
 
 Les tests créent des dépôts temporaires et couvrent les branches parallèles,
 les fusions multiples, le tri récent vers ancien, les limites, les couleurs,
-les noms longs et les dépôts vides. Aucune installation de dépendances requise.
+les noms longs, les dépôts vides, les métadonnées hostiles et les limites de
+ressources. Aucune installation de dépendances requise.
+
+La seconde commande fabrique l’archive, l’installe dans un répertoire temporaire
+et relance les tests du CLI et de sécurité contre le paquet installé.
+
+Le CLI dans `bin/` orchestre trois modules : lecture Git, rendu et traitement du
+terminal dans `src/`. Le rendu est une fonction pure ; les tests de lecture Git
+contrôlent aussi les arguments et les limites de chaque processus.
+
+La CI couvre Linux et Windows avec Node.js 22 et 24. Consulter
+[SECURITY.md](SECURITY.md) pour le modèle de confiance, les budgets de ressources
+et le compte rendu de revue, et [CHANGELOG.md](CHANGELOG.md) pour les versions.
 
 Références visuelles : [git-graph](https://github.com/git-bahn/git-graph) et
 [Serie](https://github.com/lusingander/serie). Le moteur de rendu est implémenté

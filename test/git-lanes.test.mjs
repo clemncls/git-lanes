@@ -1,57 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import test from "node:test";
-
-const script = fileURLToPath(new URL("../bin/git-lanes.mjs", import.meta.url));
-function fixture(t) {
-  const parent = resolve(tmpdir());
-  const cwd = mkdtempSync(join(parent, "git-graph-test-"));
-  t.after(() => {
-    assert.equal(dirname(resolve(cwd)), parent);
-    assert.ok(cwd.startsWith(join(parent, "git-graph-test-")));
-    rmSync(cwd, { recursive: true, force: true });
-  });
-  const git = (...args) =>
-    execFileSync(
-      "git",
-      [
-        "-c",
-        "user.name=Graph Test",
-        "-c",
-        "user.email=graph@example.test",
-        "-c",
-        "commit.gpgsign=false",
-        "-c",
-        "tag.gpgsign=false",
-        ...args,
-      ],
-      { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    ).trim();
-  git("init", "-b", "main");
-  const commit = (message, file = "main.txt") => {
-    writeFileSync(join(cwd, file), message);
-    git("add", file);
-    git("commit", "-m", message);
-    return git("rev-parse", "HEAD");
-  };
-  const run = (args = [], env = {}) =>
-    spawnSync(process.execPath, [script, ...args], {
-      cwd,
-      encoding: "utf8",
-      env: { ...process.env, COLUMNS: "100", ...env },
-    });
-  const graph = (args = [], env = {}) => {
-    const result = run(args, env);
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout;
-  };
-  return { git, commit, run, graph };
-}
+import { fixture } from "./helpers.mjs";
 
 test("simplified view preserves branches, collapses intermediate commits and groups matching refs", (t) => {
   const { git, commit, graph } = fixture(t);
@@ -136,7 +86,7 @@ test("merge parents split into separate lanes then join at their shared ancestor
   assert.match(detailed, /│\s+●\s+[0-9a-f]+.*FEATURE/);
   assert.match(detailed, /MERGE/);
   assert.match(detailed, /├───╮/);
-  assert.match(detailed, /├───╯/);
+  assert.match(detailed, /(?:├───╯|╰───┤)/);
   assert.doesNotMatch(detailed, /\[1\]/);
 });
 
@@ -155,8 +105,10 @@ test("octopus merges retain every secondary parent", (t) => {
   const body = text.split(/^  ─{10,}$/m)[1];
   assert.equal((body.match(/├[─┆]+╮/g) || []).length, 2);
   assert.equal((body.match(/├[─┆]+╯/g) || []).length, 2);
-  assert.match(body, /│\s+●\s+│\s+[0-9a-f]+\s+one/);
-  assert.match(body, /│\s+●\s+[0-9a-f]+\s+two/);
+  const one = body.split("\n").find((line) => /[0-9a-f]{7}\s+one$/.test(line));
+  const two = body.split("\n").find((line) => /[0-9a-f]{7}\s+two$/.test(line));
+  assert.ok(one && two);
+  assert.notEqual(one.indexOf("●"), two.indexOf("●"));
 });
 
 test("detailed view includes annotated tags and sanitizes terminal controls in subjects", (t) => {

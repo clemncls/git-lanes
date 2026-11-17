@@ -1,14 +1,20 @@
 {
   "name": "@clemncls/git-lanes",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A compact Git graph for the terminal, with parallel branch lanes and a simplified default view.",
   "type": "module",
   "bin": {
     "git-lanes": "bin/git-lanes.mjs"
   },
-  "files": ["bin"],
+  "files": [
+    "bin",
+    "src",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "test": "node --test test/git-lanes.test.mjs"
+    "test": "node --test test/git-lanes.test.mjs test/security.test.mjs test/repository.test.mjs test/render.test.mjs",
+    "verify:package": "node test/package-smoke.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -23,5 +29,11 @@
   "bugs": {
     "url": "https://github.com/clemncls/git-lanes/issues"
   },
-  "keywords": ["git", "graph", "terminal", "cli", "branches"]
+  "keywords": [
+    "git",
+    "graph",
+    "terminal",
+    "cli",
+    "branches"
+  ]
 }
