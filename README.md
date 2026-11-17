@@ -11,11 +11,31 @@ Use `-d` to add commit hashes, messages and tags.
 Requirements: Git on your `PATH`, Node.js 22 or later, and a terminal that
 supports Unicode characters.
 
-Install directly from GitHub; no npm registry publication is required.
+Run the published package without a permanent installation:
+
+```bash
+npx @clemncls/git-lanes
+```
+
+Or install it in a project:
+
+```bash
+pnpm add -D @clemncls/git-lanes
+pnpm exec git-lanes
+```
+
+For a global installation:
+
+```bash
+npm install -g @clemncls/git-lanes
+git-lanes
+```
+
+The package is available on [npm](https://www.npmjs.com/package/@clemncls/git-lanes).
+GitHub releases remain available as an alternative:
 
 ```bash
 pnpm add -D @clemncls/git-lanes@github:clemncls/git-lanes#v0.1.2
-pnpm exec git-lanes
 ```
 
 To run from source:
