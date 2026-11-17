@@ -1,0 +1,220 @@
+import assert from "node:assert/strict";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
+import test from "node:test";
+
+const script = fileURLToPath(new URL("../bin/git-lanes.mjs", import.meta.url));
+function fixture(t) {
+  const parent = resolve(tmpdir());
+  const cwd = mkdtempSync(join(parent, "git-graph-test-"));
+  t.after(() => {
+    assert.equal(dirname(resolve(cwd)), parent);
+    assert.ok(cwd.startsWith(join(parent, "git-graph-test-")));
+    rmSync(cwd, { recursive: true, force: true });
+  });
+  const git = (...args) =>
+    execFileSync(
+      "git",
+      [
+        "-c",
+        "user.name=Graph Test",
+        "-c",
+        "user.email=graph@example.test",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "tag.gpgsign=false",
+        ...args,
+      ],
+      { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    ).trim();
+  git("init", "-b", "main");
+  const commit = (message, file = "main.txt") => {
+    writeFileSync(join(cwd, file), message);
+    git("add", file);
+    git("commit", "-m", message);
+    return git("rev-parse", "HEAD");
+  };
+  const run = (args = [], env = {}) =>
+    spawnSync(process.execPath, [script, ...args], {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, COLUMNS: "100", ...env },
+    });
+  const graph = (args = [], env = {}) => {
+    const result = run(args, env);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  return { git, commit, run, graph };
+}
+
+test("simplified view preserves branches, collapses intermediate commits and groups matching refs", (t) => {
+  const { git, commit, graph } = fixture(t);
+  const root = commit("ROOT");
+  commit("HIDDEN", "main.txt");
+  git("tag", "hidden-tag");
+  commit("MAIN");
+  git("update-ref", "refs/remotes/origin/main", "HEAD");
+  git("branch", "mirror-main", "HEAD");
+  git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
+  git("checkout", "-b", "feature/visual", root);
+  commit("FEATURE", "feature.txt");
+  const checkpoint = git(
+    "commit-tree",
+    "HEAD^{tree}",
+    "-p",
+    root,
+    "-m",
+    "CHECKPOINT",
+  );
+  git("update-ref", "refs/t3/checkpoint", checkpoint);
+  const text = graph();
+  assert.match(text, /main\s+≡ origin\/main/);
+  assert.match(text, /≡ mirror-main/);
+  assert.match(text, /◉ feature\/visual\s+HEAD/);
+  assert.match(text, /3 repères/);
+  assert.doesNotMatch(
+    text,
+    /ROOT|HIDDEN|MAIN|FEATURE|CHECKPOINT|hidden-tag|origin\/HEAD/,
+  );
+  assert.doesNotMatch(text, /\x1b|╱|╲/);
+  assert.equal(graph(["-s"]), text);
+});
+
+test("parallel branches keep separate vertical lanes beside their branch tips", (t) => {
+  const { git, commit, graph } = fixture(t);
+  const root = commit("ROOT");
+  git("checkout", "-b", "feature", root);
+  commit("FEATURE", "feature.txt");
+  git("checkout", "main");
+  commit("MAIN");
+  for (const args of [[], ["-d"]]) {
+    const body = graph(args).split(/^  ─{10,}$/m)[1];
+    assert.match(body, /^(?=[^●◉◆○\n]*│)[ │]*[●◉◆○] /m);
+  }
+});
+
+test("recent nodes come first while their aliases stay attached below them", (t) => {
+  const { git, commit, graph } = fixture(t);
+  const root = commit("OLDEST");
+  git("branch", "base", root);
+  const middle = commit("MIDDLE");
+  git("branch", "middle", middle);
+  commit("NEWEST");
+  git("branch", "tip-alias", "HEAD");
+  for (const args of [[], ["-d"]]) {
+    const body = graph(args).split(/^  ─{10,}$/m)[1];
+    const labels = args.length
+      ? ["NEWEST", "MIDDLE", "OLDEST"]
+      : ["main", "middle", "base"];
+    const positions = labels.map((label) => body.indexOf(label));
+    assert.ok(positions.every((position) => position >= 0));
+    assert.ok(positions[0] < positions[1] && positions[1] < positions[2]);
+    assert.ok(body.indexOf("tip-alias") > positions[0]);
+    assert.ok(body.indexOf("tip-alias") < positions[1]);
+  }
+});
+
+test("merge parents split into separate lanes then join at their shared ancestor", (t) => {
+  const { git, commit, graph } = fixture(t);
+  const root = commit("ROOT");
+  commit("MAIN");
+  git("checkout", "-b", "feature", root);
+  commit("FEATURE", "feature.txt");
+  git("checkout", "main");
+  git("merge", "--no-ff", "feature", "-m", "MERGE");
+  const text = graph();
+  assert.match(text, /●\s+feature/);
+  assert.match(text, /3 repères/);
+  assert.doesNotMatch(text, /╱|╲/);
+  const detailed = graph(["-d"]);
+  assert.match(detailed, /│\s+●\s+[0-9a-f]+.*FEATURE/);
+  assert.match(detailed, /MERGE/);
+  assert.match(detailed, /├───╮/);
+  assert.match(detailed, /├───╯/);
+  assert.doesNotMatch(detailed, /\[1\]/);
+});
+
+test("octopus merges retain every secondary parent", (t) => {
+  const { git, commit, graph } = fixture(t);
+  const root = commit("ROOT");
+  for (const branch of ["one", "two"]) {
+    git("checkout", "-b", branch, root);
+    commit(branch, `${branch}.txt`);
+  }
+  git("checkout", "main");
+  commit("MAIN");
+  git("merge", "--no-ff", "one", "two", "-m", "OCTOPUS");
+  const text = graph(["-d"]);
+  assert.match(text, /○\s+│\s+│\s+[0-9a-f]+\s+MAIN/);
+  const body = text.split(/^  ─{10,}$/m)[1];
+  assert.equal((body.match(/├[─┆]+╮/g) || []).length, 2);
+  assert.equal((body.match(/├[─┆]+╯/g) || []).length, 2);
+  assert.match(body, /│\s+●\s+│\s+[0-9a-f]+\s+one/);
+  assert.match(body, /│\s+●\s+[0-9a-f]+\s+two/);
+});
+
+test("detailed view includes annotated tags and sanitizes terminal controls in subjects", (t) => {
+  const { git, commit, graph } = fixture(t);
+  commit("SUBJECT * | / \x1b[31m");
+  git("tag", "-a", "v1", "-m", "Release");
+  const text = graph(["--detailed", "--color", "never"]);
+  assert.match(text, /SUBJECT \* \| \//);
+  assert.match(text, /tag:v1/);
+  assert.doesNotMatch(text, /\x1b/);
+});
+
+test("limits indicate missing ancestry, and detailed mode defaults to 30 commits", (t) => {
+  const { commit, graph } = fixture(t);
+  for (let index = 0; index < 32; index++) commit(`commit-${index}`);
+  assert.match(graph(["-d"]), /30 commits/);
+  const short = graph(["-d", "-n", "1"]);
+  assert.match(short, /1 commits/);
+  assert.match(short, /historique limité à 1/);
+  assert.match(short, /┊/);
+});
+
+test("empty repositories and detached HEAD are readable", (t) => {
+  const { git, commit, graph } = fixture(t);
+  assert.match(graph(), /Aucun commit/);
+  commit("FIRST");
+  git("checkout", "--detach");
+  assert.match(graph(), /HEAD détachée/);
+});
+
+test("color modes and narrow terminals preserve names without wrapping graph edges", (t) => {
+  const { git, commit, graph } = fixture(t);
+  commit("ROOT");
+  git("checkout", "-b", "feature/" + "very-long-name-".repeat(6));
+  commit("FEATURE");
+  const plain = graph([], { COLUMNS: "48" });
+  assert.ok(plain.split("\n").every((line) => [...line].length <= 48));
+  assert.match(plain, /↪/);
+  const colored = graph(["--color", "always"], {
+    COLUMNS: "48",
+    NO_COLOR: "1",
+  });
+  assert.match(colored, /\x1b\[/);
+  assert.equal(stripVTControlCharacters(colored), plain);
+  assert.doesNotMatch(graph([], { NO_COLOR: "1" }), /\x1b/);
+});
+
+test("invalid options fail with an actionable message", (t) => {
+  const { run } = fixture(t);
+  for (const args of [
+    ["-n", "0"],
+    ["-n", "-2"],
+    ["-n", "1.5"],
+    ["-n", "9007199254740992"],
+    ["--color", "invalid"],
+    ["-s", "-d"],
+  ]) {
+    assert.equal(run(args).status, 1, args.join(" "));
+  }
+  assert.equal(run(["--help"]).status, 0);
+});

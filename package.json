@@ -1,0 +1,27 @@
+{
+  "name": "@clemncls/git-lanes",
+  "version": "0.1.0",
+  "description": "A compact Git graph for the terminal, with parallel branch lanes and a simplified default view.",
+  "type": "module",
+  "bin": {
+    "git-lanes": "bin/git-lanes.mjs"
+  },
+  "files": ["bin"],
+  "scripts": {
+    "test": "node --test test/git-lanes.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "author": "Clément Nicolas",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clemncls/git-lanes.git"
+  },
+  "homepage": "https://github.com/clemncls/git-lanes#readme",
+  "bugs": {
+    "url": "https://github.com/clemncls/git-lanes/issues"
+  },
+  "keywords": ["git", "graph", "terminal", "cli", "branches"]
+}
