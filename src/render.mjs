@@ -27,12 +27,14 @@ export function renderGraph(graph, { color = false, columns } = {}) {
     (ref) => ref.type !== "tag" && hashes.has(ref.hash),
   ).length;
   const totalBranches = refs.filter((ref) => ref.type !== "tag").length;
+  const nodeUnit = detailed ? "commit" : "node";
+  const nodeCount = `${nodes.length} ${nodeUnit}${nodes.length === 1 ? "" : "s"}`;
   const rule = muted("─".repeat(Math.min(width - 4, 76)));
   const output = [
     "",
     `  ${paint("1;97", "GIT GRAPH")}  ${muted("/")}  ${paint("1;97", clean(repository))}`,
-    `  ${paint("1;38;5;114", "◉")} ${paint("1;38;5;114", clean(current || (head ? "HEAD détachée" : "aucune branche")))}  ${paint("30;102", " HEAD ")}`,
-    `  ${muted(`${detailed ? "COMMITS" : "BRANCHES"}  ·  récent → ancien  ·  ${visibleBranches}/${totalBranches} branches  ·  ${nodes.length} ${detailed ? "commits" : "repères"}`)}`,
+    `  ${paint("1;38;5;114", "◉")} ${paint("1;38;5;114", clean(current || (head ? "detached HEAD" : "no branch")))}  ${paint("30;102", " HEAD ")}`,
+    `  ${muted(`${detailed ? "COMMITS" : "BRANCHES"}  ·  newest → oldest  ·  ${visibleBranches}/${totalBranches} ${totalBranches === 1 ? "branch" : "branches"}  ·  ${nodeCount}`)}`,
     `  ${rule}`,
     "",
   ];
@@ -83,9 +85,9 @@ export function renderGraph(graph, { color = false, columns } = {}) {
       muted(
         node.parents.length > 1
           ? detailed
-            ? "fusion"
-            : "jonction"
-          : "ancêtre commun",
+            ? "merge"
+            : "junction"
+          : "common ancestor",
       );
     if (detailed) {
       const summary = clipText(clean(node.subject), available);
@@ -120,7 +122,7 @@ export function renderGraph(graph, { color = false, columns } = {}) {
     const size = Math.max(1, lanes.length * 4 - 3);
     layoutCells += size;
     if (layoutCells > MAX_LAYOUT_CELLS)
-      throw new Error("Le graphe dépasse le budget de rendu. Réduire -n.");
+      throw new Error("Graph exceeds the rendering budget. Reduce -n.");
     return Array.from({ length: size }, (_, x) => ({
       glyph: x % 4 === 0 && lanes[x / 4] ? "│" : " ",
       tone: toneAt(Math.floor(x / 4)),
@@ -215,19 +217,19 @@ export function renderGraph(graph, { color = false, columns } = {}) {
       `  ${gutter}${" ".repeat(graphWidth - cells.length)}${label ? `   ${label}` : ""}`.trimEnd(),
     );
   }
-  if (!nodes.length) output.push(`  ${muted("Aucun commit pour le moment.")}`);
+  if (!nodes.length) output.push(`  ${muted("No commits yet.")}`);
   output.push(
     "",
     `  ${rule}`,
-    `  ${muted(`◉ HEAD   ● branche   ○ ancêtre   ◆ ${detailed ? "fusion" : "jonction"}   ≡ même commit`)}`,
+    `  ${muted(`◉ HEAD   ● branch   ○ ancestor   ◆ ${detailed ? "merge" : "junction"}   ≡ same commit`)}`,
   );
   if (limited)
     output.push(
-      `  ${muted(`┊ historique limité à ${count} nœuds · augmenter -n pour élargir`)}`,
+      `  ${muted(`┊ history limited to ${count} ${count === 1 ? "node" : "nodes"} · increase -n to show more`)}`,
     );
   if (crossings)
     output.push(
-      `  ${muted("┆ croisement sans jonction · ├ ┤ jonction de branches")}`,
+      `  ${muted("┆ crossing without a join · ├ ┤ branch junction")}`,
     );
   output.push("");
 

@@ -1,47 +1,46 @@
 # git-lanes
 
-Un graphe Git lisible dans le terminal : branches parallèles en colonnes,
-jonctions visibles et commits récents en haut. Sans dépendance d’exécution.
+A readable terminal Git graph with parallel branch lanes, visible junctions
+and recent commits at the top. No runtime dependencies.
 
-La vue par défaut affiche les noms des branches et replie les commits
-intermédiaires. `-d` ajoute les hashes, les messages de commits et les tags.
+The default view shows branch names and collapses intermediate commits.
+Use `-d` to add commit hashes, messages and tags.
 
 ## Installation
 
-Prérequis : Git accessible dans le `PATH`, Node.js 22 ou supérieur et un terminal
-capable d’afficher les caractères Unicode.
+Requirements: Git on your `PATH`, Node.js 22 or later, and a terminal that
+supports Unicode characters.
 
-Le paquet s’installe directement depuis GitHub ; aucune publication npm n’est
-nécessaire.
+Install directly from GitHub; no npm registry publication is required.
 
 ```bash
-pnpm add -D @clemncls/git-lanes@github:clemncls/git-lanes#v0.1.1
+pnpm add -D @clemncls/git-lanes@github:clemncls/git-lanes#v0.1.2
 pnpm exec git-lanes
 ```
 
-Pour l’exécuter depuis les sources :
+To run from source:
 
 ```bash
 git clone https://github.com/clemncls/git-lanes.git
-cd votre-autre-depot
-node /chemin/vers/git-lanes/bin/git-lanes.mjs
+cd your-other-repository
+node /path/to/git-lanes/bin/git-lanes.mjs
 ```
 
-Le graphe porte sur le dépôt du répertoire courant.
+The graph describes the repository in the current working directory.
 
-## Utilisation
+## Usage
 
 ```bash
-git-lanes                    # Vue simplifiée, 30 nœuds au maximum
-git-lanes -n 15              # Limiter à 15 nœuds
-git-lanes -d -n 50           # Afficher les détails de 50 commits
-git-lanes --color always     # Forcer les couleurs, même en redirection
-git-lanes --color never      # Désactiver les couleurs
+git-lanes                    # Simplified view, up to 30 nodes
+git-lanes -n 15              # Limit the graph to 15 nodes
+git-lanes -d -n 50           # Show details for up to 50 commits
+git-lanes --color always     # Force colors, even when redirected
+git-lanes --color never      # Disable colors
 git-lanes --help
 ```
 
-Après une installation locale, préfixer ces commandes par `pnpm exec`.
-Pour intégrer une commande au projet :
+After a local installation, prefix these commands with `pnpm exec`.
+To add a project command:
 
 ```json
 {
@@ -51,65 +50,68 @@ Pour intégrer une commande au projet :
 }
 ```
 
-Puis utiliser `pnpm -s git:graph`. Le `-s` de pnpm masque son préambule ; celui
-placé après `git:graph` sélectionne explicitement la vue simplifiée.
+Then run `pnpm -s git:graph`. The pnpm `-s` hides its command preamble;
+placing `-s` after `git:graph` explicitly selects the simplified view.
 
-| Option | Effet |
+| Option | Effect |
 | --- | --- |
-| `-s`, `--simplified` | Vue simplifiée, sélectionnée par défaut |
-| `-d`, `--detailed` | Ajouter hashes, messages et tags |
-| `-n`, `--max-count` | Limite de nœuds, 30 par défaut, maximum 10 000 ; limite de commits en mode détaillé |
-| `--color` | `auto`, `always` ou `never` |
-| `-h`, `--help` | Afficher l’aide |
+| `-s`, `--simplified` | Simplified view, selected by default |
+| `-d`, `--detailed` | Show commit hashes, messages and tags |
+| `-n`, `--max-count` | Node limit: 30 by default, at most 10,000; limits commits in detailed mode |
+| `--color` | `auto`, `always` or `never` |
+| `-h`, `--help` | Show help |
 
-## Lecture du graphe
+## Reading the graph
 
-Chaque branche active conserve sa colonne jusqu’à sa jonction. Les noms
-s’alignent à droite du graphe ; les noms longs passent à la ligne.
+Each live branch keeps its column until it joins another branch. Labels align
+to the right of the graph; long names wrap onto additional lines.
 
-- `◉` et le badge `HEAD` repèrent la position courante.
-- `●` repère une branche, `○` un ancêtre commun et `◆` une jonction ou une fusion.
-- `≡` regroupe des références pointant sur le même commit.
-- `├`, `┤` et les coudes arrondis matérialisent les connexions.
-- `┆` indique un croisement de lignes sans jonction.
-- `┊` prolonge une ascendance située hors de la limite affichée.
+- `◉` and the `HEAD` badge mark the current position.
+- `●` marks a branch, `○` a common ancestor, and `◆` a junction or merge.
+- `≡` groups references pointing to the same commit.
+- `├`, `┤` and rounded elbows show connections.
+- `┆` marks paths crossing without joining.
+- `┊` continues ancestry beyond the selected limit.
 
-Les branches locales et distantes sont incluses. Les références symboliques
-comme `origin/HEAD` sont regroupées avec leur cible ; les références internes,
-comme les checkpoints d’outils, ne servent pas de points de départ.
+Local and remote branches are included. Symbolic references such as
+`origin/HEAD` are represented by their target; internal references, such as
+tool checkpoints, are excluded as starting points.
 
-La vue simplifiée décrit l’ascendance entre les positions de branches : Git peut
-replier des commits et réécrire leurs liens. Le mode détaillé conserve les parents
-réels des commits. Les couleurs sont automatiques, désactivées en redirection ou
-avec `NO_COLOR`, sauf demande explicite `--color always`.
+The simplified view describes ancestry between branch positions: Git may
+collapse commits and rewrite their links. Detailed mode preserves actual
+commit parents. Colors are automatic, disabled when redirected or when
+`NO_COLOR` is set, unless explicitly requested with `--color always`.
 
-## Développement
+All built-in messages and Git subprocess diagnostics use English. Repository
+metadata, including branch names and commit messages, remains in its original
+language.
+
+## Development
 
 ```bash
 npm test
 npm run verify:package
 ```
 
-Les tests créent des dépôts temporaires et couvrent les branches parallèles,
-les fusions multiples, le tri récent vers ancien, les limites, les couleurs,
-les noms longs, les dépôts vides, les métadonnées hostiles et les limites de
-ressources. Aucune installation de dépendances requise.
+Tests create temporary repositories and cover parallel branches, multiple-parent
+merges, newest-first ordering, limits, colors, long names, empty repositories,
+hostile metadata and resource budgets. No dependency installation is required.
 
-La seconde commande fabrique l’archive, l’installe dans un répertoire temporaire
-et relance les tests du CLI et de sécurité contre le paquet installé.
+The second command builds the archive, installs it in a temporary directory and
+reruns CLI and security tests against the installed package.
 
-Le CLI dans `bin/` orchestre trois modules : lecture Git, rendu et traitement du
-terminal dans `src/`. Le rendu est une fonction pure ; les tests de lecture Git
-contrôlent aussi les arguments et les limites de chaque processus.
+The CLI in `bin/` coordinates Git reading, rendering and terminal handling in
+`src/`. Rendering is a pure function; repository tests also verify subprocess
+arguments and resource limits.
 
-La CI couvre Linux et Windows avec Node.js 22 et 24. Consulter
-[SECURITY.md](SECURITY.md) pour le modèle de confiance, les budgets de ressources
-et le compte rendu de revue, et [CHANGELOG.md](CHANGELOG.md) pour les versions.
+CI covers Linux and Windows with Node.js 22 and 24. See [SECURITY.md](SECURITY.md)
+for the trust model, resource budgets and security review, and
+[CHANGELOG.md](CHANGELOG.md) for release history.
 
-Références visuelles : [git-graph](https://github.com/git-bahn/git-graph) et
-[Serie](https://github.com/lusingander/serie). Le moteur de rendu est implémenté
-ici en JavaScript, sans dépendre de ces outils ni d’un protocole d’images.
+Visual references: [git-graph](https://github.com/git-bahn/git-graph) and
+[Serie](https://github.com/lusingander/serie). The renderer is implemented here
+in JavaScript, without depending on either tool or a terminal image protocol.
 
-## Licence
+## License
 
-MIT — voir [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

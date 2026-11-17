@@ -1,21 +1,29 @@
 # Changelog
 
+## 0.1.2 — 2026-11-17
+
+- Translate all CLI help, errors, graph labels, documentation and test assertions into English.
+- Use the C locale for Git subprocess diagnostics.
+- Preserve Unicode fixtures and repository metadata in their original language.
+- Keep existing flags, defaults and security limits unchanged.
+
 ## 0.1.1 — 2026-11-17
 
-- Séparation du CLI, de la lecture Git, du rendu et du traitement du terminal.
-- Filtrage des sorties d’erreur et des contrôles de terminal ; représentation
-  visible des contrôles Unicode bidirectionnels et invisibles.
-- Délais et budgets explicites pour Git, les références, les métadonnées et le graphe.
-- Arguments Git fixes et révisions validées sur stdin, sans shell, notes,
-  pager, suivi de fichiers ni vérification de signature.
-- Lecture des tags pointant sur un objet non commit ignorée sans faire échouer le graphe.
-- Regroupement des références par index ; correction des couleurs lors de la réutilisation des colonnes.
-- Retour à la ligne tenant compte des caractères larges et des graphèmes combinés.
-- Fermeture d’un pipe en aval gérée sans trace `EPIPE`.
-- Tests de sécurité, tests de rendu sans Git et CI Linux/Windows sur Node.js 22/24.
-- Politique et compte rendu de revue dans [SECURITY.md](SECURITY.md).
+- Separate the CLI, Git reading, rendering and terminal handling.
+- Filter terminal controls and error output; expose bidirectional and invisible
+  Unicode controls as visible escapes.
+- Add explicit Git, reference, metadata and graph resource budgets.
+- Use fixed Git arguments and validated revisions on stdin, without a shell,
+  notes, pager, file monitoring or signature verification.
+- Ignore tags pointing to non-commit objects without breaking the graph.
+- Index references when grouping them; fix colors when reusing columns.
+- Wrap wide characters and combined graphemes correctly.
+- Handle closed downstream pipes without an `EPIPE` stack trace.
+- Add security tests, Git-independent rendering tests and Linux/Windows CI
+  with Node.js 22 and 24.
+- Document the security policy and review in [SECURITY.md](SECURITY.md).
 
 ## 0.1.0 — 2026-11-17
 
-- Première version : graphe terminal à colonnes persistantes, vue simplifiée
-  par défaut, détails avec `-d`, limite configurable avec `-n`.
+- Initial release: terminal graph with persistent columns, a simplified default
+  view, details with `-d`, and a configurable limit with `-n`.

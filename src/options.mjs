@@ -1,20 +1,20 @@
 import { parseArgs } from "node:util";
 
 export const MAX_COUNT = 10000;
-export const HELP = `Usage : git-lanes [-d] [-n <nombre>]
+export const HELP = `Usage: git-lanes [-d] [-n <count>]
 
-Un graphe Git en colonnes, du récent vers l'ancien.
-Par défaut : branches seules, commits intermédiaires repliés.
-Les branches parallèles et leurs jonctions restent visibles côte à côte.
+A Git graph with parallel lanes, newest commits first.
+Default: branch names only, with intermediate commits collapsed.
+Parallel branches and their junctions remain visible side by side.
 
-Options :
-  -d, --detailed           Ajouter les hashes, messages de commits et tags
-  -s, --simplified         Vue simplifiée (défaut)
-  -n, --max-count <nombre> Limite de nœuds (défaut : 30, maximum : ${MAX_COUNT})
-      --color <mode>       auto (défaut), always ou never
-  -h, --help               Afficher cette aide
+Options:
+  -d, --detailed          Show commit hashes, messages and tags
+  -s, --simplified        Simplified view (default)
+  -n, --max-count <count> Node limit (default: 30, maximum: ${MAX_COUNT})
+      --color <mode>      auto (default), always or never
+  -h, --help              Show this help
 
-Exemples :
+Examples:
   git-lanes
   git-lanes -n 15
   git-lanes -d -n 50
@@ -44,12 +44,12 @@ export function parseOptions(args) {
     count > MAX_COUNT
   ) {
     throw new Error(
-      `Le nombre de nœuds doit être un entier entre 1 et ${MAX_COUNT}.`,
+      `Node count must be an integer between 1 and ${MAX_COUNT}.`,
     );
   }
   if (!["auto", "always", "never"].includes(values.color))
-    throw new Error("--color attend auto, always ou never.");
+    throw new Error("--color must be auto, always or never.");
   if (values.detailed && values.simplified)
-    throw new Error("Choisir -d ou -s, une seule vue à la fois.");
+    throw new Error("Choose either -d or -s, not both.");
   return { help: false, count, detailed: values.detailed, color: values.color };
 }

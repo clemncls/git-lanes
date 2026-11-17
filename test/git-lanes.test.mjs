@@ -27,7 +27,7 @@ test("simplified view preserves branches, collapses intermediate commits and gro
   assert.match(text, /main\s+≡ origin\/main/);
   assert.match(text, /≡ mirror-main/);
   assert.match(text, /◉ feature\/visual\s+HEAD/);
-  assert.match(text, /3 repères/);
+  assert.match(text, /3 nodes/);
   assert.doesNotMatch(
     text,
     /ROOT|HIDDEN|MAIN|FEATURE|CHECKPOINT|hidden-tag|origin\/HEAD/,
@@ -80,7 +80,7 @@ test("merge parents split into separate lanes then join at their shared ancestor
   git("merge", "--no-ff", "feature", "-m", "MERGE");
   const text = graph();
   assert.match(text, /●\s+feature/);
-  assert.match(text, /3 repères/);
+  assert.match(text, /3 nodes/);
   assert.doesNotMatch(text, /╱|╲/);
   const detailed = graph(["-d"]);
   assert.match(detailed, /│\s+●\s+[0-9a-f]+.*FEATURE/);
@@ -126,17 +126,17 @@ test("limits indicate missing ancestry, and detailed mode defaults to 30 commits
   for (let index = 0; index < 32; index++) commit(`commit-${index}`);
   assert.match(graph(["-d"]), /30 commits/);
   const short = graph(["-d", "-n", "1"]);
-  assert.match(short, /1 commits/);
-  assert.match(short, /historique limité à 1/);
+  assert.match(short, /1 commit/);
+  assert.match(short, /history limited to 1/);
   assert.match(short, /┊/);
 });
 
 test("empty repositories and detached HEAD are readable", (t) => {
   const { git, commit, graph } = fixture(t);
-  assert.match(graph(), /Aucun commit/);
+  assert.match(graph(), /No commits/);
   commit("FIRST");
   git("checkout", "--detach");
-  assert.match(graph(), /HEAD détachée/);
+  assert.match(graph(), /detached HEAD/);
 });
 
 test("color modes and narrow terminals preserve names without wrapping graph edges", (t) => {

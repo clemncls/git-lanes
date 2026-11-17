@@ -51,7 +51,7 @@ test("wide hostile layouts fail before allocating an unbounded canvas", () => {
   const nodes = Array.from({ length: 500 }, (_, index) =>
     node(`tip${index}`, [`missing${index}`]),
   );
-  assert.throws(() => renderGraph(graph(nodes)), /budget de rendu/);
+  assert.throws(() => renderGraph(graph(nodes)), /rendering budget/);
 });
 
 test("terminal width is finite and bounded, even with an invalid COLUMNS value", () => {

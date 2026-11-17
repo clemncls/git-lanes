@@ -15,7 +15,7 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
     metadata += safe.length;
     if (metadata > MAX_METADATA)
       throw new Error(
-        "Les métadonnées Git dépassent le budget de texte. Réduire -n ou le nombre de références.",
+        "Git metadata exceeds the text budget. Reduce -n or the number of references.",
       );
     return safe;
   }
@@ -37,6 +37,8 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
           ...process.env,
           GIT_OPTIONAL_LOCKS: "0",
           GIT_TERMINAL_PROMPT: "0",
+          LC_ALL: "C",
+          LANG: "C",
         },
         encoding: "utf8",
         shell: false,
@@ -47,13 +49,13 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
     );
     if (result.error) {
       if (result.error.code === "ETIMEDOUT")
-        throw new Error("Git a dépassé le délai de 15 secondes.");
+        throw new Error("Git exceeded the 15-second timeout.");
       if (result.error.code === "ENOBUFS")
         throw new Error(
-          "La sortie Git dépasse la limite de 8 Mio. Réduire -n ou le nombre de références.",
+          "Git output exceeds the 8 MiB limit. Reduce -n or the number of references.",
         );
       throw new Error(
-        `Impossible de lancer Git : ${sanitizeText(result.error.message)}`,
+        `Could not start Git: ${sanitizeText(result.error.message)}`,
       );
     }
     if (result.status !== 0) {
@@ -62,7 +64,7 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
       if (optional && result.status === 1) return "";
       throw new Error(
         sanitizeText(result.stderr).trim() ||
-          "La lecture du dépôt Git a échoué.",
+          "Could not read the Git repository.",
       );
     }
     return result.stdout.trimEnd();
@@ -72,7 +74,7 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
     optional: true,
   });
   if (head && !objectId.test(head))
-    throw new Error("Identifiant HEAD invalide dans la sortie Git.");
+    throw new Error("Invalid HEAD object ID in Git output.");
   const current = text(
     git(["symbolic-ref", "--quiet", "--short", "HEAD"], { optional: true }),
   );
@@ -88,18 +90,20 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
   let referencesRead = 0;
   for (const line of refOutput ? refOutput.split("\n") : []) {
     if (++referencesRead > MAX_REFS)
-      throw new Error(`Le dépôt dépasse la limite de ${MAX_REFS} références.`);
+      throw new Error(
+        `Repository exceeds the limit of ${MAX_REFS} references.`,
+      );
     const [object, peeled, ref, symbolic, type, peeledType] = line.split("\0");
     if (
       !objectId.test(object) ||
       !ref?.match(/^refs\/(heads|remotes|tags)\//) ||
       ref.length > MAX_TEXT_LENGTH
     )
-      throw new Error("Référence invalide ou trop longue dans la sortie Git.");
+      throw new Error("Invalid or oversized reference in Git output.");
     if (symbolic || (peeled ? peeledType : type) !== "commit") continue;
     const hash = peeled || object;
     if (!objectId.test(hash))
-      throw new Error("Identifiant de référence invalide dans la sortie Git.");
+      throw new Error("Invalid reference object ID in Git output.");
     const item = {
       hash,
       type: ref.startsWith("refs/heads/")
@@ -154,7 +158,7 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
       !objectId.test(hash) ||
       parents.some((parent) => !objectId.test(parent))
     )
-      throw new Error("Format inattendu dans la sortie Git.");
+      throw new Error("Unexpected format in Git output.");
     return {
       hash,
       parents,

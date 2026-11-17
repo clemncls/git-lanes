@@ -54,6 +54,8 @@ test("Git runs without a shell, pager, signature verifier or optional writes, wi
     assert.equal(call.options.timeout, GIT_TIMEOUT);
     assert.equal(call.options.maxBuffer, GIT_MAX_BUFFER);
     assert.equal(call.options.env.GIT_OPTIONAL_LOCKS, "0");
+    assert.equal(call.options.env.LC_ALL, "C");
+    assert.equal(call.options.env.LANG, "C");
     assert.ok(call.args.includes("--no-pager"));
     assert.ok(call.args.includes("core.fsmonitor=false"));
     assert.ok(call.args.includes("log.showSignature=false"));
@@ -66,9 +68,9 @@ test("Git runs without a shell, pager, signature verifier or optional writes, wi
 
 test("Git timeouts, buffer exhaustion and signals produce controlled errors", () => {
   for (const [code, message] of [
-    ["ETIMEDOUT", /15 secondes/],
-    ["ENOBUFS", /8 Mio/],
-    ["ENOENT", /Impossible de lancer Git/],
+    ["ETIMEDOUT", /15-second/],
+    ["ENOBUFS", /8 MiB/],
+    ["ENOENT", /Could not start Git/],
   ]) {
     assert.throws(
       () =>
@@ -83,7 +85,7 @@ test("Git timeouts, buffer exhaustion and signals produce controlled errors", ()
   });
   assert.throws(
     () => readRepository({ cwd: ".", count: 30 }, run),
-    /lecture du dépôt/,
+    /read the Git repository/,
   );
 });
 
@@ -93,7 +95,7 @@ test("unexpected Git output fails closed without echoing untrusted bytes", () =>
   });
   assert.throws(
     () => readRepository({ cwd: ".", count: 30 }, run),
-    /Format inattendu/,
+    /Unexpected format/,
   );
 });
 
@@ -129,7 +131,7 @@ test("reference and text budgets bound repository-controlled metadata", () => {
   });
   assert.throws(
     () => readRepository({ cwd: ".", count: 30 }, manyRefs.run),
-    /10000 références/,
+    /10000 references/,
   );
   const longLines = Array.from({ length: 300 }, (_, index) =>
     [
@@ -146,7 +148,7 @@ test("reference and text budgets bound repository-controlled metadata", () => {
   });
   assert.throws(
     () => readRepository({ cwd: ".", count: 30 }, longRefs.run),
-    /budget de texte/,
+    /text budget/,
   );
 });
 

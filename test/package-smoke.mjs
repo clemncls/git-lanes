@@ -8,8 +8,7 @@ import { fileURLToPath } from "node:url";
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const parent = resolve(tmpdir());
 const npm = process.env.npm_execpath;
-if (!npm)
-  throw new Error("Exécuter cette vérification avec npm run verify:package.");
+if (!npm) throw new Error("Run this check with npm run verify:package.");
 const workspace = mkdtempSync(join(parent, "git-lanes-package-"));
 const runNpm = (args, options = {}) =>
   execFileSync(process.execPath, [npm, ...args], {
@@ -68,7 +67,7 @@ try {
       env: { ...process.env, GIT_LANES_TEST_BIN: installed },
     },
   );
-  console.log("Archive installée : tests du CLI et tests de sécurité réussis.");
+  console.log("Installed archive: CLI and security tests passed.");
 } finally {
   assert.equal(dirname(resolve(workspace)), parent);
   assert.ok(workspace.startsWith(join(parent, "git-lanes-package-")));
