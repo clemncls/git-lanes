@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { HELP, parseOptions } from "../src/options.mjs";
 import { readRepository } from "../src/repository.mjs";
-import { renderGraph } from "../src/render.mjs";
+import { renderGraph, renderFiles } from "../src/render.mjs";
 import { sanitizeText } from "../src/terminal.mjs";
 
 function report(error) {
@@ -31,7 +31,7 @@ try {
         process.env.NO_COLOR === undefined &&
         process.env.TERM !== "dumb");
     process.stdout.write(
-      renderGraph(graph, {
+      (options.files ? renderFiles : renderGraph)(graph, {
         color,
         columns: process.stdout.columns || process.env.COLUMNS,
       }),

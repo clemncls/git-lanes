@@ -10,6 +10,7 @@ const MAX_LAYOUT_CELLS = 250000;
 export function renderGraph(graph, { color = false, columns } = {}) {
   const {
     repository,
+    changes = [],
     head,
     current,
     refs,
@@ -231,7 +232,21 @@ export function renderGraph(graph, { color = false, columns } = {}) {
     output.push(
       `  ${muted("┆ crossing without a join · ├ ┤ branch junction")}`,
     );
-  output.push("");
+  output.push("", `  ${paint("1;97", "WORKING TREE")}  ${changes.length ? `${changes.length} changed ${changes.length === 1 ? "file" : "files"}` : "clean"}`);
+  for (const change of changes) {
+    output.push(`  ${muted(clean(change.state))}  ${change.from ? `${clean(change.from)} -> ` : ""}${clean(change.path)}`);
+  }
+  if (changes.length) output.push(`  ${muted("Status: index / working tree; ?? untracked ? git status for details")}`);
+  output.push("", `  ${muted(`Commands: git-lanes --help | git-lanes ${detailed ? "-s" : "-d"} | git-lanes -n ${Math.min(count * 2, 10000)}`)}`, "");
 
   return output.map((line) => wrapLine(line, width, color)).join("\n") + "\n";
+}
+
+export function renderFiles({ changes, revision }, { columns } = {}) {
+  const width = terminalWidth(columns);
+  const title = revision ? `Files in commit ${sanitizeText(revision)} (relative to first parent):` : "Uncommitted files (index / working tree; ?? untracked):";
+  const lines = [title];
+  for (const change of changes) lines.push(`  ${sanitizeText(change.state)}  ${change.from ? `${sanitizeText(change.from)} -> ` : ""}${sanitizeText(change.path)}`);
+  if (!changes.length) lines.push("  No changed files.");
+  return lines.map((line) => wrapLine(line, width)).join("\n") + "\n";
 }

@@ -8,7 +8,7 @@ export const MAX_REFS = 10000;
 export const MAX_METADATA = 1000000;
 const objectId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
-export function readRepository({ cwd, count, detailed }, run = spawnSync) {
+export function readRepository({ cwd, count, detailed, files, revision }, run = spawnSync) {
   let metadata = 0;
   function text(value) {
     const safe = sanitizeText(value);
@@ -70,6 +70,37 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
     return result.stdout.trimEnd();
   }
   const repository = text(basename(git(["rev-parse", "--show-toplevel"])));
+  // Porcelain v1 with NUL separators preserves unusual file names and rename paths.
+  const statusOutput = git(["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=none"]);
+  const entries = statusOutput ? statusOutput.split("\0") : [];
+  const changes = [];
+  for (let i = 0; i < entries.length && entries[i]; i++) {
+    const entry = entries[i];
+    if (entry.length < 4 || entry[2] !== " ")
+      throw new Error("Unexpected format in Git status output.");
+    const state = entry.slice(0, 2);
+    const path = text(entry.slice(3));
+    const from = /[RC]/.test(state) ? text(entries[++i] || "") : "";
+    changes.push({ state, path, from });
+  }
+  if (files) {
+    if (!revision) return { repository, changes, revision: null };
+    const resolved = git(["rev-parse", "--verify", "--end-of-options", `${revision}^{commit}`]);
+    if (!objectId.test(resolved)) throw new Error("Invalid commit object ID in Git output.");
+    const rawFiles = git(["diff-tree", "--root", "--no-commit-id", "--name-status", "--no-ext-diff", "--no-textconv", "-r", "-m", "--first-parent", "-M", "-z", resolved, "--"]);
+    const fields = rawFiles ? rawFiles.split("\0") : [];
+    const commitChanges = [];
+    for (let i = 0; i < fields.length && fields[i];) {
+      const state = fields[i++];
+      if (!/^(?:[ACDMRTUXB]|[RC]\d{1,3})$/.test(state) || !fields[i])
+        throw new Error("Unexpected format in Git diff output.");
+      const first = text(fields[i++]);
+      const renamed = /^[RC]/.test(state);
+      if (renamed && !fields[i]) throw new Error("Unexpected format in Git diff output.");
+      commitChanges.push({ state, path: renamed ? text(fields[i++]) : first, from: renamed ? first : "" });
+    }
+    return { repository, changes: commitChanges, revision: text(revision) };
+  }
   const head = git(["rev-parse", "--verify", "--quiet", "HEAD"], {
     optional: true,
   });
@@ -168,6 +199,7 @@ export function readRepository({ cwd, count, detailed }, run = spawnSync) {
   });
   return {
     repository,
+    changes,
     head,
     current,
     refs,

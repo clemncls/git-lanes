@@ -20,12 +20,15 @@ function reader(overrides = {}) {
         ? "head"
         : args.includes("symbolic-ref")
           ? "branch"
-          : args.includes("for-each-ref")
+          : args.includes("status")
+            ? "status"
+            : args.includes("for-each-ref")
             ? "refs"
             : "log";
     if (overrides[action]) return overrides[action];
     const stdout = {
       directory: "/repositories/example\n",
+      status: "",
       head: head + "\n",
       branch: "main\n",
       refs: [head, "", "refs/heads/main", "", "commit", ""].join("\0") + "\n",

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { stripVTControlCharacters } from "node:util";
 import test from "node:test";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fixture } from "./helpers.mjs";
 
 test("simplified view preserves branches, collapses intermediate commits and groups matching refs", (t) => {
@@ -23,7 +25,7 @@ test("simplified view preserves branches, collapses intermediate commits and gro
     "CHECKPOINT",
   );
   git("update-ref", "refs/t3/checkpoint", checkpoint);
-  const text = graph();
+  const text = graph(["-s"]);
   assert.match(text, /main\s+≡ origin\/main/);
   assert.match(text, /≡ mirror-main/);
   assert.match(text, /◉ feature\/visual\s+HEAD/);
@@ -33,7 +35,7 @@ test("simplified view preserves branches, collapses intermediate commits and gro
     /ROOT|HIDDEN|MAIN|FEATURE|CHECKPOINT|hidden-tag|origin\/HEAD/,
   );
   assert.doesNotMatch(text, /\x1b|╱|╲/);
-  assert.equal(graph(["-s"]), text);
+  assert.equal(graph(), graph(["-d"]));
 });
 
 test("parallel branches keep separate vertical lanes beside their branch tips", (t) => {
@@ -43,7 +45,7 @@ test("parallel branches keep separate vertical lanes beside their branch tips", 
   commit("FEATURE", "feature.txt");
   git("checkout", "main");
   commit("MAIN");
-  for (const args of [[], ["-d"]]) {
+  for (const args of [["-s"], ["-d"]]) {
     const body = graph(args).split(/^  ─{10,}$/m)[1];
     assert.match(body, /^(?=[^●◉◆○\n]*│)[ │]*[●◉◆○] /m);
   }
@@ -57,9 +59,9 @@ test("recent nodes come first while their aliases stay attached below them", (t)
   git("branch", "middle", middle);
   commit("NEWEST");
   git("branch", "tip-alias", "HEAD");
-  for (const args of [[], ["-d"]]) {
+  for (const args of [["-s"], ["-d"]]) {
     const body = graph(args).split(/^  ─{10,}$/m)[1];
-    const labels = args.length
+    const labels = args[0] === "-d"
       ? ["NEWEST", "MIDDLE", "OLDEST"]
       : ["main", "middle", "base"];
     const positions = labels.map((label) => body.indexOf(label));
@@ -78,7 +80,7 @@ test("merge parents split into separate lanes then join at their shared ancestor
   commit("FEATURE", "feature.txt");
   git("checkout", "main");
   git("merge", "--no-ff", "feature", "-m", "MERGE");
-  const text = graph();
+  const text = graph(["-s"]);
   assert.match(text, /●\s+feature/);
   assert.match(text, /3 nodes/);
   assert.doesNotMatch(text, /╱|╲/);
@@ -169,4 +171,38 @@ test("invalid options fail with an actionable message", (t) => {
     assert.equal(run(args).status, 1, args.join(" "));
   }
   assert.equal(run(["--help"]).status, 0);
+});
+
+
+test("working tree lists staged, unstaged, untracked and renamed files", (t) => {
+  const { cwd, git, commit, graph } = fixture(t);
+  commit("ROOT");
+  assert.match(graph(), /WORKING TREE  clean/);
+  git("mv", "main.txt", "renamed.txt");
+  writeFileSync(join(cwd, "renamed.txt"), "modified after staging");
+  writeFileSync(join(cwd, "new file.txt"), "new");
+  const output = graph();
+  assert.match(output, /2 changed files/);
+  assert.match(output, /RM  main.txt -> renamed.txt/);
+  assert.match(output, /\?\?  new file.txt/);
+  assert.match(output, /git-lanes --help/);
+  assert.match(output, /git-lanes -s/);
+});
+
+
+test("--files lists uncommitted files or those changed in a commit", (t) => {
+  const { cwd, git, commit, graph, run } = fixture(t);
+  commit("FIRST");
+  assert.match(graph(["--files", "HEAD"]), /A  main.txt/);
+  git("mv", "main.txt", "renamed.txt");
+  git("commit", "-m", "rename");
+  writeFileSync(join(cwd, "untracked.txt"), "new content");
+  const working = graph(["--files"]);
+  assert.match(working, /\?\?  untracked.txt/);
+  assert.doesNotMatch(working, /GIT GRAPH|new content/);
+  const changed = graph(["--files", "HEAD"]);
+  assert.match(changed, /R100  main.txt -> renamed.txt/);
+  assert.doesNotMatch(changed, /untracked.txt/);
+  assert.equal(run(["--files", "missing-ref"]).status, 1);
+  assert.equal(run(["HEAD"]).status, 1);
 });

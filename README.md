@@ -3,8 +3,9 @@
 A readable terminal Git graph with parallel branch lanes, visible junctions
 and recent commits at the top. No runtime dependencies.
 
-The default view shows branch names and collapses intermediate commits.
-Use `-d` to add commit hashes, messages and tags.
+The default view shows commit hashes, messages and tags. Use `-s` to show
+branch names with intermediate commits collapsed. The working tree section
+lists uncommitted and untracked files with Git porcelain status codes.
 
 ## Installation
 
@@ -51,7 +52,10 @@ The graph describes the repository in the current working directory.
 ## Usage
 
 ```bash
-git-lanes                    # Simplified view, up to 30 nodes
+git-lanes                    # Detailed view, up to 30 commits
+git-lanes -s                 # Simplified branch view
+git-lanes --files             # List uncommitted and untracked files
+git-lanes --files HEAD        # List files changed by a commit
 git-lanes -n 15              # Limit the graph to 15 nodes
 git-lanes -d -n 50           # Show details for up to 50 commits
 git-lanes --color always     # Force colors, even when redirected
@@ -75,8 +79,9 @@ placing `-s` after `git:graph` explicitly selects the simplified view.
 
 | Option | Effect |
 | --- | --- |
-| `-s`, `--simplified` | Simplified view, selected by default |
-| `-d`, `--detailed` | Show commit hashes, messages and tags |
+| `--files [commit]` | List changed file names and statuses; a merge is compared to its first parent |
+| `-s`, `--simplified` | Simplified branch view |
+| `-d`, `--detailed` | Show commit hashes, messages and tags (default) |
 | `-n`, `--max-count` | Node limit: 30 by default, at most 10,000; limits commits in detailed mode |
 | `--color` | `auto`, `always` or `never` |
 | `-h`, `--help` | Show help |

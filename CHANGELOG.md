@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 - 2026-11-25
+
+- Show the detailed graph by default; use `-s` for the simplified view.
+- Show working tree changes and useful commands beneath the graph.
+- Add `--files [commit]` to list uncommitted files or files changed by a commit.
+
 ## 0.1.2 — 2026-11-17
 
 - Translate all CLI help, errors, graph labels, documentation and test assertions into English.
